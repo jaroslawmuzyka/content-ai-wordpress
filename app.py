@@ -370,17 +370,24 @@ if check_password():
 
         st.divider()
         
-        # KONFIGURACJA WP
-        st.header("🌍 Konfiguracja WordPress")
-        st.info("Dane wpisujesz jednorazowo dla sesji (nie są zapisywane w bazie).")
-        wp_domain = st.text_input("Domena (np. mojablog.pl)", placeholder="https://mojablog.pl")
-        wp_user = st.text_input("Użytkownik WP")
-        wp_key = st.text_input("Hasło Aplikacji", type="password", help="Wygeneruj w WP > Użytkownicy > Profil > Hasła aplikacji")
+      # KONFIGURACJA WP
+        st.header("🌍 Konfiguracja API WordPress")
+        with st.expander("ℹ️ Jak uzyskać klucz?", expanded=False):
+            st.markdown("""
+            1. Wejdź w WP Admin > Użytkownicy > Profil.
+            2. Zjedź na dół do **Hasła aplikacji**.
+            3. Wpisz nazwę (np. 'Streamlit') i kliknij 'Dodaj'.
+            4. Skopiowany ciąg to Twój **Klucz API**.
+            """)
+
+        wp_domain = st.text_input("Domena", placeholder="https://twojablog.pl")
+        wp_user = st.text_input("Użytkownik WP (Login)", help="Login do konta, na którym wygenerowano klucz")
+        wp_key = st.text_input("Hasło Aplikacji (Klucz API)", type="password", help="Ciąg znaków wygenerowany w profilu użytkownika")
         
         wp_config = {
             "url": wp_domain,
             "user": wp_user,
-            "key": wp_key
+            "key": wp_key # To trafi do funkcji publish_post_draft jako api_key
         }
 
     # --- GŁÓWNY OBSZAR ---
