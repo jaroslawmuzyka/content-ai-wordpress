@@ -1,59 +1,58 @@
 import requests
-import base64
+from requests.auth import HTTPBasicAuth
 from urllib.parse import urlparse
 
 def normalize_url(url):
-    """Upewnia się, że URL ma protokół i nie ma ukośnika na końcu."""
+    """Upewnia się, że URL ma protokół i jest czystą domeną."""
     if not url.startswith(('http://', 'https://')):
         url = 'https://' + url
     return url.rstrip('/')
 
-def publish_post_draft(domain, username, app_password, title, content):
+def publish_post_draft(domain, api_user, api_key, title, content):
     """
-    Publikuje post jako szkic (draft) w WordPress.
+    Publikuje post przez WordPress REST API.
     
     Args:
-        domain (str): Adres strony (np. mojablog.pl)
-        username (str): Nazwa użytkownika WP
-        app_password (str): Hasło aplikacji (nie hasło do logowania!)
+        domain (str): Adres strony (np. https://mojablog.pl)
+        api_user (str): Nazwa użytkownika (login) powiązana z kluczem
+        api_key (str): Wygenerowane Hasło Aplikacji (API Token)
         title (str): Tytuł artykułu
         content (str): Treść HTML
-        
-    Returns:
-        dict: Wynik operacji (success, message, link)
     """
     base_url = normalize_url(domain)
-    api_url = f"{base_url}/wp-json/wp/v2/posts"
+    # Endpoint API WordPressa
+    api_endpoint = f"{base_url}/wp-json/wp/v2/posts"
     
-    # Tworzenie nagłówka autoryzacji Basic Auth
-    credentials = f"{username}:{app_password}"
-    token = base64.b64encode(credentials.encode()).decode('utf-8')
-    headers = {
-        "Authorization": f"Basic {token}",
-        "Content-Type": "application/json"
-    }
-    
-    payload = {
-        "title": title,
-        "content": content,
-        "status": "draft" # Publikujemy jako szkic
+    # Payload dla API
+    post_data = {
+        'title': title,
+        'content': content,
+        'status': 'draft'  # Publikujemy jako szkic
     }
     
     try:
-        response = requests.post(api_url, headers=headers, json=payload, timeout=30)
+        # Wysyłamy żądanie do API używając Basic Auth (Standard WP API)
+        response = requests.post(
+            api_endpoint,
+            auth=HTTPBasicAuth(api_user, api_key),
+            json=post_data,
+            timeout=30
+        )
         
         if response.status_code == 201:
             data = response.json()
             return {
                 "success": True,
-                "id": data.get("id"),
-                "link": data.get("link"), # Link do podglądu
+                "link": data.get('link'),
+                "id": data.get('id'),
                 "message": "Opublikowano pomyślnie"
             }
         elif response.status_code == 401:
-            return {"success": False, "message": "Błąd autoryzacji (401). Sprawdź hasło aplikacji."}
+            return {"success": False, "message": "Błąd 401: Nieautoryzowany dostęp. Sprawdź nazwę użytkownika i Hasło Aplikacji (Klucz API)."}
+        elif response.status_code == 403:
+            return {"success": False, "message": "Błąd 403: Brak uprawnień. Użytkownik musi mieć rolę Autora lub Administratora."}
         else:
-            return {"success": False, "message": f"Błąd API: {response.status_code} - {response.text[:200]}"}
+            return {"success": False, "message": f"Błąd API ({response.status_code}): {response.text[:200]}"}
             
     except Exception as e:
-        return {"success": False, "message": f"Wyjątek połączenia: {str(e)}"}
+        return {"success": False, "message": f"Błąd połączenia: {str(e)}"}
